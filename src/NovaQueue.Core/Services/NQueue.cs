@@ -8,6 +8,7 @@ using NovaQueue.Abstractions;
 using Microsoft.Extensions.Options;
 using Quartz.Impl;
 using Quartz;
+using NovaQueue.Abstractions.Models;
 
 namespace NovaQueue.Core
 {
@@ -17,11 +18,14 @@ namespace NovaQueue.Core
 	/// Suitable for use on clients as a lightweight, portable alternative to MSMQ. Not recommended for use 
 	/// on large server side applications due to performance limitations of LiteDB.
 	/// </summary>
-	public class NQueue<T> : ITransactionalQueue<T>
+	public class NQueue<TPayload> : ITransactionalQueue<TPayload>
 	{
-		public NovaQueueOptions<T> Options { get; private set; }
+		public QueueOptions<TPayload> Options { get; private set; }
 		readonly object _dequeueLock = new object();
-		private readonly IQueueRepository repository;
+		private readonly IDatabaseContext<TPayload> dbContext;
+		private readonly IQueueRepository<TPayload> queueRepo;
+		private readonly IDeadLetterRepository<TPayload> deadLetterRepo;
+		private readonly ICompletedRepository<TPayload> completedRepo;
 		public bool IsDeadLetterEnabled => Options.Completed.IsEnabled;
 
 		#region Constructors
@@ -32,12 +36,20 @@ namespace NovaQueue.Core
 		/// <param name="db">The LiteDB database. You are responsible for its lifecycle (using/dispose)</param>
 		/// <param name="collectionName">Name of the collection to create</param>
 		/// <param name="transactional">Whether the queue should use transaction logic, default true</param>
-		public NQueue(IQueueRepository repository, IOptions<NovaQueueOptions<T>> options)
+		public NQueue(
+			IDatabaseContext<TPayload> context,
+			IQueueRepository<TPayload> queueRepository,
+			IDeadLetterRepository<TPayload> deadLetterRepository,
+			ICompletedRepository<TPayload> completedRepository,
+			IOptions<QueueOptions<TPayload>> options)
 		{
-			this.repository = repository;
+			dbContext = context;
+			queueRepo = queueRepository;
+			deadLetterRepo = deadLetterRepository;
+			completedRepo = completedRepository;
 			Options = options.Value;
 
-			repository.Initialize(Options.Name, Options.DeadLetter.IsEnabled, Options.Completed.IsEnabled);
+			//dbContext.Initialize(Options.Name);
 			if (Options.ResetOrphansOnStartup)
 				ResetOrphans();
 
@@ -46,52 +58,53 @@ namespace NovaQueue.Core
 			{
 				StdSchedulerFactory factory = new StdSchedulerFactory();
 				IScheduler sched = factory.GetScheduler().Result;
-
-
 			}
 		}
 
 		#endregion
 
+		#region Synchronous Methods
+
+		public QueueEntry<TPayload> Get(string id) =>
+			queueRepo.Get(id);
+
 		/// <summary>
-		/// Adds a single item to queue. See <see cref="Enqueue(IEnumerable{T})"/> for adding a batch.
+		/// Adds a single item to queue. See <see cref="Enqueue(IEnumerable{TPayload})"/> for adding a batch.
 		/// </summary>
 		/// <param name="item"></param>
-		public void Enqueue(T item)
+		public void Enqueue(TPayload item)
 		{
 			if (item == null)
 			{
 				throw new ArgumentNullException(nameof(item));
 			}
 
-			repository.Insert(
-				new QueueEntry<T>(item)
-				.Adapt<QueueEntry<object>>());
+			queueRepo.Insert(new QueueEntry<TPayload>(item));
 		}
 
 		/// <summary>
-		/// Adds a batch of items to the queue. See <see cref="Enqueue(T)"/> for adding a single item.
+		/// Adds a batch of items to the queue. See <see cref="Enqueue(TPayload)"/> for adding a single item.
 		/// </summary>
 		/// <param name="items"></param>
-		public void Enqueue(IEnumerable<T> items)
+		public void Enqueue(IEnumerable<TPayload> items)
 		{
-			List<QueueEntry<T>> inserts = new List<QueueEntry<T>>();
+			List<QueueEntry<TPayload>> inserts = new List<QueueEntry<TPayload>>();
 			foreach (var item in items)
 			{
-				inserts.Add(new QueueEntry<T>(item));
+				inserts.Add(new QueueEntry<TPayload>(item));
 			}
 
-			repository.InsertBulk(inserts.Adapt<List<QueueEntry<object>>>());
+			queueRepo.InsertBulk(inserts.Adapt<List<QueueEntry<TPayload>>>());
 		}
 
 		/// <summary>
 		/// Transactional queues:
-		///     Marks item as checked out but does not remove from queue. You are expected to later call <see cref="Commit(QueueEntry{T})"/> or <see cref="Abort(QueueEntry{T})"/>
+		///     Marks item as checked out but does not remove from queue. You are expected to later call <see cref="Commit(QueueEntry{TPayload})"/> or <see cref="Abort(QueueEntry{TPayload})"/>
 		/// Non-transactional queues:
-		///     Removes item from queue with no need to call <see cref="Commit(QueueEntry{T})"/> or <see cref="Abort(QueueEntry{T})"/>
+		///     Removes item from queue with no need to call <see cref="Commit(QueueEntry{TPayload})"/> or <see cref="Abort(QueueEntry{TPayload})"/>
 		/// </summary>
 		/// <returns>An item if found or null</returns>
-		public QueueEntry<T> Dequeue()
+		public QueueEntry<TPayload> Dequeue()
 		{
 			var result = Dequeue(1);
 			if (result.Count == 0)
@@ -109,50 +122,41 @@ namespace NovaQueue.Core
 		/// </summary>
 		/// <param name="batchSize">The maximum number of items to dequeue</param>
 		/// <returns>The items found or an empty collection (never null)</returns>
-		public List<QueueEntry<T>> Dequeue(int batchSize)
-		{
-			var entries = repository.CheckoutEntries(batchSize);
-			var ret = new List<QueueEntry<T>>();    // entries.Adapt<IEnumerable<QueueEntry<T>>>();
-			foreach (var entry in entries)
-			{
-				var e = entry.Adapt<QueueEntry<T>>();
-				e.Payload = (T)entry.Payload;
-				ret.Add(e);
-			}
-			return ret.ToList();
-		}
+		public List<QueueEntry<TPayload>> Dequeue(int batchSize) =>
+			queueRepo.CheckoutEntries(batchSize).ToList();
+
 
 		/// <summary>
 		/// Obtains list of items currently checked out (but not yet commited or aborted) as a result of Dequeue calls on a transactional queue
 		/// </summary>
 		/// <exception cref="InvalidOperationException">Thrown when queue is not transactional</exception>
 		/// <returns>Items found or empty collection (never null)</returns>
-		public List<QueueEntry<T>> CurrentCheckouts()
-		{
-			return repository
-				.GetCheckoutEntries()
-				.Adapt<IEnumerable<QueueEntry<T>>>()
-				.ToList();
-		}
+		public List<QueueEntry<TPayload>> CurrentCheckouts() =>
+			queueRepo.GetCheckedOutEntries().ToList();
 
 		/// <summary>
-		/// Aborts all currently checked out items. Equivalent of calling <see cref="CurrentCheckouts"/> followed by <see cref="Abort(IEnumerable{QueueEntry{T}})"/>
+		/// Aborts all currently checked out items. Equivalent of calling <see cref="CurrentCheckouts"/> followed by <see cref="Abort(IEnumerable{QueueEntry{TPayload}})"/>
 		/// </summary>
 		/// <exception cref="InvalidOperationException">Thrown when queue is not transactional</exception>
 		public void ResetOrphans()
 		{
-			Abort(CurrentCheckouts(), "ResetOrphans");
+			var entries = CurrentCheckouts();
+			foreach (var entry in entries)
+			{
+				entry.IsCheckedOut = false;
+				queueRepo.Update(entry);
+			}
 		}
 
-		private bool IsMaxAttemptsReached(QueueEntry<object> item) =>
+		private bool IsMaxAttemptsReached(QueueEntry<TPayload> item) =>
 			Options.MaxAttempts > 0 && item.Attempts >= Options.MaxAttempts;
 
 		/// <summary>
-		/// Aborts a transaction on a single item. See <see cref="Abort(IEnumerable{QueueEntry{T}})"/> for batches.
+		/// Aborts a transaction on a single item. See <see cref="Abort(IEnumerable{QueueEntry{TPayload}})"/> for batches.
 		/// </summary>
 		/// <param name="item">An item that was obtained from a <see cref="Dequeue"/> call</param>
 		/// <exception cref="InvalidOperationException">Thrown when queue is not transactional</exception>
-		public void Abort(QueueEntry<T> entry, string error = null)
+		public void Abort(QueueEntry<TPayload> entry, ErrorType errorType, params Error[] errors)
 		{
 			var lockAbort = new object();
 			lock (lockAbort)
@@ -161,64 +165,60 @@ namespace NovaQueue.Core
 				{
 					throw new ArgumentNullException(nameof(entry));
 				}
-				var item = entry.Adapt<QueueEntry<object>>();
+				entry.Errors.Add(new AttemptErrors { Attempt = entry.Attempts, Type = errorType, Errors = errors });
+				entry.IsCheckedOut = false;
+				entry.Attempts++;
+				entry.LastAttempt = DateTime.UtcNow;
 
-				item.IsCheckedOut = false;
-				item.Attempts++;
-				item.LastAttempt = DateTime.UtcNow;
+				dbContext.BeginTransaction();
 
-				if (!string.IsNullOrEmpty(error))
-					item.Errors.Add(error);
-
-				if (IsMaxAttemptsReached(item))
+				if (IsMaxAttemptsReached(entry) || errorType==ErrorType.Validation)
 				{
 					if (IsDeadLetterEnabled)
 					{
-						repository.MoveToDeadLetter(item);
+						deadLetterRepo.Insert(new DeadLetterEntry<TPayload>(entry));
 					}
-					else
-					{
-						repository.Delete(item.Id);
-					}
+					queueRepo.Delete(entry.Id);
 				}
 				else
 				{
 					if (Options.OnFailure == OnFailurePolicy.Retry)
 					{
-						repository.Update(item);
+						queueRepo.Update(entry);
 					}
 					else
 					{
-						repository.MoveToLastPosition(item);
+						queueRepo.MoveToEnd(entry);
 					}
 				}
+				dbContext.CommitTransaction();
 			}
 		}
 
 
 		/// <summary>
-		/// Aborts a transation on a group of items. See <see cref="Abort(QueueEntry{T})"/> for a single item.
+		/// Aborts a transation on a group of items. See <see cref="Abort(QueueEntry{TPayload})"/> for a single item.
 		/// </summary>
 		/// <param name="items">Items that were obtained from a <see cref="Dequeue"/> call</param>
 		/// <exception cref="InvalidOperationException">Thrown when queue is not transactional</exception>
-		public void Abort(IEnumerable<QueueEntry<T>> items, string error = null)
+		public void Abort(IEnumerable<QueueEntry<TPayload>> items, ErrorType type, params Error[] errors)
 		{
 			var lockAbort = new object();
 			lock (lockAbort)
 			{
 				foreach (var item in items)
 				{
-					Abort(item, error);
+					Abort(item, type, errors);
 				}
 			}
 		}
 
 		/// <summary>
-		/// Commits a transaction on a single item. See <see cref="Commit(IEnumerable{QueueEntry{T}})"/> for batches.
+		/// Commits a transaction on a single item. See <see cref="Commit(IEnumerable{QueueEntry{TPayload}})"/> for batches.
 		/// </summary>
 		/// <param name="item">An item that was obtained from a <see cref="Dequeue"/> call</param>
 		/// <exception cref="InvalidOperationException">Thrown when queue is not transactional</exception>
-		public void Commit(QueueEntry<T> item)
+		public void Commit(QueueEntry<TPayload> item)
 		{
 			var lockCommit = new object();
 			lock (lockCommit)
@@ -229,18 +229,19 @@ namespace NovaQueue.Core
 				}
 
 				if (Options.Completed.IsEnabled)
-					repository.MoveToCompleted(item.Adapt<QueueEntry<object>>());
-				else
-					repository.Delete(item.Id);
+				{
+					completedRepo.Insert(new CompletedEntry<TPayload>(item));
+				}
+				queueRepo.Delete(item.Id);
 			}
 		}
 
 		/// <summary>
-		/// Commits a transation on a group of items. See <see cref="Commit(QueueEntry{T})/> for a single item.
+		/// Commits a transation on a group of items. See <see cref="Commit(QueueEntry{TPayload})/> for a single item.
 		/// </summary>
 		/// <param name="items">Items that were obtained from a <see cref="Dequeue"/> call</param>
 		/// <exception cref="InvalidOperationException">Thrown when queue is not transactional</exception>
-		public void Commit(IEnumerable<QueueEntry<T>> items)
+		public void Commit(IEnumerable<QueueEntry<TPayload>> items)
 		{
 			var lockCommit = new object();
 			lock (lockCommit)
@@ -255,34 +256,118 @@ namespace NovaQueue.Core
 		/// <summary>
 		/// Number of items in queue, including those that have been checked out.
 		/// </summary>
-		public int Count()
-		{
-			return repository.Count(CollectionType.Queue);
-		}
+		public int Count() =>
+			queueRepo.Count();
+
 		/// <summary>
 		/// Number of items in queue, including those that have been checked out.
 		/// </summary>
-		public int CountToCheckout()
-		{
-			return repository.CountNew();
-		}
+		public int CountToCheckout() =>
+			queueRepo.CountNotCheckedOut();
+
 		/// <summary>
 		/// Removes all items from queue, including any that have been checked out.
 		/// </summary>
-		public void Clear()
-		{
-			repository.Clear(
-				CollectionType.Queue |
-				CollectionType.DeadLetter |
-				CollectionType.Completed);
-		}
+		public void Clear() =>
+			queueRepo.Clear();
 
-		public IEnumerable<DeadLetterEntry<T>> DeadLetterEntries() =>
-			repository.GetDeadLetterEntries().Adapt<IEnumerable<DeadLetterEntry<T>>>();		
 
-		public IEnumerable<CompletedEntry<T>> CompletedEntries() =>
-			repository.GetCompletedEntries().Adapt<IEnumerable<CompletedEntry<T>>>();
-		public IEnumerable<QueueEntry<T>> QueuedEntries() =>
-			repository.GetEntries(100).Adapt<IEnumerable<QueueEntry<T>>>();
+		public IEnumerable<DeadLetterEntry<TPayload>> DeadLetterEntries() =>
+			deadLetterRepo.GetAll();
+
+		public IEnumerable<CompletedEntry<TPayload>> CompletedEntries() =>
+			completedRepo.GetAll();
+		public IEnumerable<QueueEntry<TPayload>> QueuedEntries() =>
+			queueRepo.GetAll();
+
+		public void MoveUp(QueueEntry<TPayload> item) =>
+			queueRepo.MoveUp(item);
+
+		#endregion
+
+		#region Asynchronous Methods
+
+		public async Task AbortAsync(IEnumerable<QueueEntry<TPayload>> items, ErrorType type, params Error[] errors) =>
+			await Task.Run(() => Abort(items, type, errors));
+
+		public async Task AbortAsync(QueueEntry<TPayload> item, ErrorType type, params Error[] errors) =>
+			await Task.Run(() => Abort(item, type, errors));
+
+		public async Task CommitAsync(IEnumerable<QueueEntry<TPayload>> items) =>
+			await Task.Run(() => Commit(items));
+
+		public async Task CommitAsync(QueueEntry<TPayload> item) =>
+			await Task.Run(() => Commit(item));
+
+		public async Task<List<QueueEntry<TPayload>>> CurrentCheckoutsAsync() =>
+			await Task.Run(() => CurrentCheckouts());
+
+		public async Task<IEnumerable<DeadLetterEntry<TPayload>>> DeadLetterEntriesAsync() =>
+			await Task.Run(() => DeadLetterEntries());
+
+		public async Task<IEnumerable<CompletedEntry<TPayload>>> CompletedEntriesAsync() =>
+			await Task.Run(() => CompletedEntries());
+
+		public async Task<IEnumerable<QueueEntry<TPayload>>> QueuedEntriesAsync() =>
+			await Task.Run(() => QueuedEntries());
+
+		public async Task ResetOrphansAsync() =>
+			await Task.Run(() => ResetOrphans());
+
+		public async Task MoveUpAsync(QueueEntry<TPayload> item) =>
+			await Task.Run(() => MoveUp(item));
+
+		public async void Delete(string id) =>
+			await Task.Run(() => Delete(id));
+
+		public async void DeleteCompleted(string id) =>
+			await Task.Run(() => DeleteCompleted(id));
+
+		public async void DeleteDeadLetter(string id) =>
+			await Task.Run(() => DeleteDeadLetter(id));
+
+		public async void ClearCompleted() =>
+			await Task.Run(() => ClearCompleted());
+
+		public async void ClearDeadLetter() =>
+			await Task.Run(() => ClearDeadLetter());
+
+		public async Task DeleteAsync(string id) =>
+			await Task.Run(() => Delete(id));
+
+		public async Task DeleteCompletedAsync(string id) =>
+			await Task.Run(() => DeleteCompleted(id));
+
+		public async Task DeleteDeadLetterAsync(string id) =>
+			await Task.Run(() => DeleteDeadLetter(id));
+
+		public async Task ClearAsync() =>
+			await Task.Run(() => Clear());
+
+		public async Task ClearCompletedAsync() =>
+			await Task.Run(() => ClearCompleted());
+
+		public async Task ClearDeadLetterAsync() =>
+			await Task.Run(() => ClearDeadLetter());
+
+		public async Task<int> CountAsync() =>
+			await Task.Run(() => Count());
+
+		public async Task<QueueEntry<TPayload>> GetAsync(string id) =>
+			await Task.Run(() => Get(id));
+
+		public async Task<QueueEntry<TPayload>> DequeueAsync() =>
+			await Task.Run(() => Dequeue());
+
+		public async Task<List<QueueEntry<TPayload>>> DequeueAsync(int batchSize) =>
+			await Task.Run(() => Dequeue(batchSize));
+
+		public async Task EnqueueAsync(IEnumerable<TPayload> items) =>
+			await Task.Run(() => Enqueue(items));
+
+		public async Task EnqueueAsync(TPayload item) =>
+			await Task.Run(() => Enqueue(item));
+
+		#endregion	}
 	}
 }

@@ -15,7 +15,7 @@ namespace NovaQueueTests
 	/// </summary>
 	public class NovaQueueTest_NotTransactional : IDisposable
 	{
-		LiteDBRepository _repository;
+		LiteDBQueueRepository _repository;
 		const string _collectionName = "nottransactionaltestcollection";
 
 		NQueueSimple<T> CreateQueue<T>()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace NovaQueue.Abstractions.Models
@@ -104,20 +105,10 @@ namespace NovaQueue.Abstractions.Models
 		string Message { get; }
 		IReadOnlyCollection<Error> Errors { get; }
 	}
-	public class ValidationErrorResult : Result, IErrorResult
+	public class ValidationErrorResult : ErrorResult, IErrorResult
 	{
-		public ValidationErrorResult(string message) : base()
-		{
-		}
-
-		public ValidationErrorResult(string message, params ValidationError[] errors) : base()
-		{
-			Message = message;
-			Success = false;
-			Errors = errors ?? Array.Empty<Error>();
-		}
-		public string Message { get; }
-		public IReadOnlyCollection<Error> Errors { get; }
+		public ValidationErrorResult(string message, params ValidationError[] errors) 
+			: base(message,errors) { }
 	}
 	public class ValidationErrorResult<T> : Result<T>, IErrorResult
 	{
@@ -128,6 +119,8 @@ namespace NovaQueue.Abstractions.Models
 		public ValidationErrorResult(string message, params ValidationError[] errors) : base(default)
 		{
 			Message = message;
+			//if (errors != null)
+			//	message += "\n" + string.Join("\n", errors.Select(c=>$"{c.PropertyName}={c.Details}"));
 			Success = false;
 			Errors = errors ?? Array.Empty<Error>();
 		}
@@ -141,7 +134,10 @@ namespace NovaQueue.Abstractions.Models
 		{
 			PropertyName = propertyName;
 		}
-
+		public override string ToString()
+		{
+			return $"{PropertyName}={Details}";
+		}
 		public string PropertyName { get; }
 	}
 }

@@ -9,14 +9,14 @@ namespace NovaQueue.Worker
 		protected CancellationTokenSource? _cancellationToken;
 		protected readonly ILogger<NQueueWorkerBase<TPayload>> _logger;
 		protected readonly ITransactionalQueue<TPayload> _queue;
-		protected readonly NovaQueueOptions<TPayload> _options;
+		protected readonly QueueOptions<TPayload> _options;
 
 		protected readonly List<Task> _tasks;
 		protected Task? _mainLoopTask;
 		public NQueueWorkerBase(
 			ILogger<NQueueWorkerBase<TPayload>> logger,
 			ITransactionalQueue<TPayload> queue,
-			IOptions<NovaQueueOptions<TPayload>> options)
+			IOptions<QueueOptions<TPayload>> options)
 		{
 			_logger = logger;
 			_queue = queue;
@@ -90,6 +90,21 @@ namespace NovaQueue.Worker
 				}
 			}
 			catch { }
+		}
+
+		public Task<WorkerStatus> GetStatusAsync()
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task StopAsync()
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task StartAsync()
+		{
+			throw new NotImplementedException();
 		}
 	}
 

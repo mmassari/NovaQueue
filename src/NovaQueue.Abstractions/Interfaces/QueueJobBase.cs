@@ -3,38 +3,35 @@ using System;
 
 namespace NovaQueue.Abstractions
 {
+	public delegate void JobLogEventHandler<T>(QueueEntry<T> entry, string log);
 	public abstract class QueueJobBase<T> : IQueueJob<T>
 	{
-		protected QueueEntryLog logs { get; }
-		public QueueJobBase()
-		{
-			logs = new QueueEntryLog();
-		}
+		protected QueueEntry<T> entry;
+		public event JobLogEventHandler<T> LogMessageReceived;
 		protected abstract void JobExecute(T payload);
-		public virtual Result<QueueEntryLog> RunWorker(T payload)
+		public virtual Result RunWorker(QueueEntry<T> entry)
 		{
-			var validation = Validate(payload);
+			this.entry = entry;
+			var validation = Validate(entry.Payload);
 			if (!validation.Result)
-				return new ValidationErrorResult<QueueEntryLog>("Validation Errors", validation.Errors);
+				return new ValidationErrorResult("Validation Errors", validation.Errors);
 
 			try
 			{
-				JobExecute(payload);
-				return new SuccessResult<QueueEntryLog>(logs);
+				JobExecute(entry.Payload);
+				return new SuccessResult();
 			}
 			catch (Exception ex)
 			{
-				return new ErrorResult<QueueEntryLog>(
+				return new ErrorResult(
 					"An error has been thrown",
-					new Error(ex.Message))
-				{
-					Data = logs
-				};
+					new Error(ex.Message));
 			}
 		}
 		protected void LogEvent(string message)
 		{
-			logs.Add(message);
+			Console.WriteLine(message);
+			LogMessageReceived?.Invoke(entry, message);
 		}
 		protected virtual (bool Result, ValidationError[] Errors) Validate(T payload)
 		{

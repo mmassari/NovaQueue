@@ -13,16 +13,19 @@ public class DelayJob : QueueJobBase<DelayPayload>
 		ValidationResult result = new DelayPayloadValidator().Validate(payload);
 		if (result.IsValid)
 			return (true, null!);
-
-		return (false, result.Errors.Select(c => new ValidationError(c.PropertyName, c.ErrorMessage)).ToArray());
+		var err = result.Errors.Select(c => new ValidationError(c.PropertyName, c.ErrorMessage));
+		LogEvent("VALIDATION ERROR!! " + string.Join(" - ", err));
+		return (false, err.ToArray());
 	}
 	protected override void JobExecute(DelayPayload payload)
 	{
 		LogEvent($"RunWorkerAsync - Payload: {payload}");
 		Task.Delay(3000);
-		if (payload.title == "Daniele")
+		if (payload.counter % 10 == 0)
 		{
-			throw new InvalidOperationException("Impossibile aspettare Daniele");
+			var err = "Errore durante la divisione per 10";
+			LogEvent("ERROR!! " + err);
+			throw new InvalidOperationException(err);
 		}
 	}
 	public class DelayPayloadValidator : AbstractValidator<DelayPayload>

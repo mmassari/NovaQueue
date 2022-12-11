@@ -1,89 +1,57 @@
 ﻿using LiteDB;
 using NovaQueue.Abstractions;
+using NovaQueue.Abstractions.Interfaces.Repository;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
 namespace NovaQueue.Persistence.LiteDB;
-
-public class LiteDBRepository : IQueueRepository
+public class LiteDBQueueRepository<TPayload> : IQueueRepository<TPayload>
 {
-	private ILiteCollection<QueueEntry<object>> _collection;
-	private ILiteCollection<DeadLetterEntry<object>> _deadLetterCollection;
-	private ILiteCollection<CompletedEntry<object>> _completedCollection;
-	private string _collectionName;
-	private string _deadLetterCollectionName;
-	private string _completedCollectionName;
-	private LiteDatabase Database = null;
 	private object _dequeueLock = new();
-	private bool _deadLetterQueueEnabled;
-	private bool _completedQueueEnabled;
-	public LiteDBRepository(string connectionString)
+	private readonly LiteDBContext<TPayload> context;
+
+	public LiteDBQueueRepository(LiteDBContext<TPayload> context)
 	{
-		Database = new LiteDatabase(connectionString);
+		this.context = context; 
 	}
-	public void Initialize(string name, bool deadLetterQueueEnabled = false, bool completedQueueEnabled = false)
-	{
-		_collectionName = name;
-		_deadLetterCollectionName = name + "_DeadLetter";
-		_completedCollectionName = name + "_Completed";
-		_deadLetterQueueEnabled = deadLetterQueueEnabled;
-		_completedQueueEnabled = completedQueueEnabled;
 
-		_collection = Database.GetCollection<QueueEntry<object>>(_collectionName);
-		_collection.EnsureIndex(x => x.Id);
-		_collection.EnsureIndex(x => x.IsCheckedOut);
+	public void InsertBulk(IEnumerable<QueueEntry<TPayload>> entries) =>
+		context.Collection.InsertBulk(entries);
+	public void Insert(QueueEntry<TPayload> entry) =>
+		context.Collection.Insert(entry);
+	public void Update(QueueEntry<TPayload> entry) =>
+		context.Collection.Update(entry);
+	public void Delete(string id) =>
+		context.Collection.Delete(new BsonValue(id));
 
-		if (deadLetterQueueEnabled)
-		{
-			_deadLetterCollection = Database.GetCollection<DeadLetterEntry<object>>(_deadLetterCollectionName);
-			_deadLetterCollection.EnsureIndex(x => x.Id);
-
-		}
-		if (completedQueueEnabled)
-		{
-			_completedCollection = Database.GetCollection<CompletedEntry<object>>(_completedCollectionName);
-			_completedCollection.EnsureIndex(x => x.Id);
-
-		}
-
-	}
-	public void InsertBulk(IEnumerable<QueueEntry<object>> entries) =>
-		_collection.InsertBulk(entries);
-	public void Insert(QueueEntry<object> entry) =>
-		_collection.Insert(entry);
-	public void Update(QueueEntry<object> entry) =>
-		_collection.Update(entry);
-	public void Delete(long id) =>
-		_collection.Delete(new BsonValue(id));
-
-	public void Delete(IEnumerable<QueueEntry<object>> entries)
+	public void Delete(IEnumerable<QueueEntry<TPayload>> entries)
 	{
 		var _dequeueLock = new object();
 		lock (_dequeueLock)
 		{
 			try
 			{
-				Database.BeginTrans();
+				context.Database.BeginTrans();
 
 				foreach (var item in entries)
-					_collection.Delete(item.Id);
+					context.Collection.Delete(item.Id);
 
-				Database.Commit();
+				context.Database.Commit();
 			}
 			catch (Exception)
 			{
-				Database.Rollback();
+				context.Database.Rollback();
 				throw;
 			}
 		}
 	}
-	public IEnumerable<QueueEntry<object>> CheckoutEntries(int maxEntries)
+	public IEnumerable<QueueEntry<TPayload>> CheckoutEntries(int maxEntries)
 	{
 		lock (_dequeueLock)
 		{
-			var result = _collection.Find(c => c.IsCheckedOut == false, 0, maxEntries).ToList();
+			var result = context.Collection.Find(c => c.IsCheckedOut == false, 0, maxEntries).ToList();
 			if (result.Count() > 0)
 				Debug.WriteLine($" € {result.First().Payload} ");
 
@@ -91,7 +59,7 @@ public class LiteDBRepository : IQueueRepository
 			{
 				item.IsCheckedOut = true;
 				//_collection.Update(new BsonValue(item.Id), item);
-				Database.Execute($"UPDATE {_collectionName} SET IsCheckedOut=true WHERE _id = {item.Id}");
+				context.Database.Execute($"UPDATE {context.CollectionName} SET IsCheckedOut=true WHERE _id = {item.Id}");
 				//					_collection.Update(item);
 				//					Debug.WriteLine($" € {item.Payload} ");
 			}
@@ -100,109 +68,112 @@ public class LiteDBRepository : IQueueRepository
 			return result;
 		}
 	}
-	public IEnumerable<QueueEntry<object>> GetCheckoutEntries() =>
-		_collection.Find(c => c.IsCheckedOut == true);
-	public IEnumerable<QueueEntry<object>> GetEntries(int maxItems) =>
-		_collection.Find(c => c.IsCheckedOut == false, 0, maxItems);
-	public IEnumerable<CompletedEntry<object>> GetCompletedEntries() =>
-		_completedCollection.FindAll();
-	public IEnumerable<QueueEntry<object>> GetDeadLetterEntries() =>
-		_collection.FindAll();
+	public IEnumerable<QueueEntry<TPayload>> GetCheckoutEntries() =>
+		context.Collection.Find(c => c.IsCheckedOut == true);
+	public IEnumerable<QueueEntry<TPayload>> GetEntries(int maxItems) =>
+		context.Collection.Find(c => c.IsCheckedOut == false, 0, maxItems);
+	public IEnumerable<CompletedEntry<TPayload>> GetCompletedEntries() =>
+		context.CompletedCollection.FindAll();
+	public IEnumerable<QueueEntry<TPayload>> GetDeadLetterEntries() =>
+		context.Collection.FindAll();
 	public bool HaveEntries() =>
-		_collection.Count(c => c.IsCheckedOut == false) > 0;
+		context.Collection.Count(c => c.IsCheckedOut == false) > 0;
 
-	public void MoveToDeadLetter(QueueEntry<object> entry)
+	public void MoveToDeadLetter(QueueEntry<TPayload> entry)
 	{
-		if (!_deadLetterQueueEnabled)
+		if (!context.DeadLetterQueueEnabled)
 			throw new InvalidOperationException("DeadLetterQueue is not enabled");
 
 		try
 		{
-			Database.BeginTrans();
+			context.Database.BeginTrans();
 
-			_deadLetterCollection.Insert(new DeadLetterEntry<object>(entry));
+			context.DeadLetterCollection.Insert(new DeadLetterEntry<TPayload>(entry));
 			Delete(entry.Id);
 
-			Database.Commit();
+			context.Database.Commit();
 		}
 		catch (Exception ex)
 		{
-			Database.Rollback();
+			context.Database.Rollback();
 		}
 	}
-	public void MoveToLastPosition(QueueEntry<object> item)
+	public void MoveToLastPosition(QueueEntry<TPayload> item)
 	{
 		try
 		{
-			Database.BeginTrans();
+			context.Database.BeginTrans();
 
 			Delete(item.Id);
-			item.Id = 0;
 			Insert(item);
 
-			Database.Commit();
+			context.Database.Commit();
 		}
 		catch (Exception)
 		{
-			Database.Rollback();
+			context.Database.Rollback();
 		}
 	}
-	public void MoveToCompleted(QueueEntry<object> entry)
+	public void MoveUp(QueueEntry<TPayload> entry)
 	{
-		if (!_completedQueueEnabled)
+
+	}
+	public void MoveToCompleted(QueueEntry<TPayload> entry)
+	{
+		if (!context.CompletedQueueEnabled)
 			throw new InvalidOperationException("CompletedQueue is not enabled");
 
 		try
 		{
-			Database.BeginTrans();
+			context.Database.BeginTrans();
 
 			Delete(entry.Id);
-			var completed = new CompletedEntry<object>(entry);
-			_completedCollection.Insert(completed);
+			var completed = new CompletedEntry<TPayload>(entry);
+			context.CompletedCollection.Insert(completed);
 
-			Database.Commit();
+			context.Database.Commit();
 		}
 		catch (Exception)
 		{
-			Database.Rollback();
+			context.Database.Rollback();
 		}
 	}
-	public void RestoreFromDeadLetter(IEnumerable<DeadLetterEntry<object>> entries)
+	public void RestoreFromDeadLetter(IEnumerable<DeadLetterEntry<TPayload>> entries)
 	{
-		if (!_deadLetterQueueEnabled)
+		if (!context.DeadLetterQueueEnabled)
 			throw new InvalidOperationException("DeadLetterQueue is not enabled");
 
 		try
 		{
-			Database.BeginTrans();
+			context.Database.BeginTrans();
 
 			foreach (var entry in entries)
 			{
-				var item = new QueueEntry<object>(entry.Payload);
-				_deadLetterCollection.Delete(entry.Id);
-				_collection.Insert(item);
+				var item = new QueueEntry<TPayload>(entry.Payload);
+				context.DeadLetterCollection.Delete(entry.Id);
+				context.Collection.Insert(item);
 			}
 
-			Database.Commit();
+			context.Database.Commit();
 		}
 		catch (Exception)
 		{
-			Database.Rollback();
+			context.Database.Rollback();
 		}
 	}
-	public int CountNew() => _collection.Count(c => !c.IsCheckedOut);
+	public int CountNew() => context.Collection.Count(c => !c.IsCheckedOut);
 	public int Count(CollectionType collection)
 	{
 		int count = 0;
 
 		if (collection.HasFlag(CollectionType.Queue))
-			count += _collection.Count();
+			count += context.Collection.Count();
 
 		if (collection.HasFlag(CollectionType.DeadLetter))
-			count += _deadLetterCollection.Count();
+			count += context.DeadLetterCollection.Count();
 
 		if (collection.HasFlag(CollectionType.Completed))
-			count += _completedCollection.Count();
+			count += context.CompletedCollection.Count();
 
 		return count;
 	}
@@ -210,23 +181,22 @@ public class LiteDBRepository : IQueueRepository
 	public void Clear(CollectionType collection)
 	{
 		if (collection.HasFlag(CollectionType.Queue))
-			_collection.DeleteAll();
+			context.Collection.DeleteAll();
 
 		if (collection.HasFlag(CollectionType.DeadLetter))
-			_deadLetterCollection.DeleteAll();
+			context.DeadLetterCollection.DeleteAll();
 
 		if (collection.HasFlag(CollectionType.Completed))
-			_completedCollection.DeleteAll();
+			context.CompletedCollection.DeleteAll();
 	}
 	public void DropCollection()
 	{
-		Database.DropCollection(_collectionName);
-		Database.DropCollection(_completedCollectionName);
-		Database.DropCollection(_deadLetterCollectionName);
+		context.Database.DropCollection(context.CollectionName);
+		context.Database.DropCollection(context.CompletedCollectionName);
+		context.Database.DropCollection(context.DeadLetterCollectionName);
 	}
 	public void Dispose()
 	{
-		Database.Dispose();
-		Database = null;
+		context.Database.Dispose();
 	}
 }

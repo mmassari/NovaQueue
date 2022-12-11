@@ -5,7 +5,8 @@ namespace NovaQueue.Abstractions
 {
 	public interface IQueueJob<T>
 	{
-		Result<QueueEntryLog> RunWorker(T payload);
+		event JobLogEventHandler<T> LogMessageReceived;
+		Result RunWorker(QueueEntry<T> payload);
 	}
 
 }

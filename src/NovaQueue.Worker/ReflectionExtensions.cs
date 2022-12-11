@@ -11,12 +11,11 @@ namespace NovaQueue.Worker
 {
 	public static class ReflectionExtensions
 	{
-		public static void HandleResult<T>(this ITransactionalQueue<T> queue, QueueEntry<T> item, Result<QueueEntryLog> result)
+		public static void HandleResult<T>(this ITransactionalQueue<T> queue, QueueEntry<T> item, Result result)
 		{
 			item.LastAttempt = DateTime.Now;
 			item.Attempts++;
 			item.IsCheckedOut = false;
-			item.Logs = result.Data.Logs;
 
 			if (result.Success) 
 			{
@@ -24,12 +23,13 @@ namespace NovaQueue.Worker
 			}			
 			else
 			{
-				var err = result as ErrorResult<QueueEntryLog>;
-				if (err != null)
-					queue.Abort(item, err.Message + string.Join("\n", err.Errors));
+				if (result is ValidationErrorResult validationResult)
+					queue.Abort(item, ErrorType.Validation, validationResult.Errors.ToArray());
+				else if (result is ErrorResult errorResult)
+					queue.Abort(item, ErrorType.JobExecution, new Error(errorResult.Message));
 				else
-					queue.Abort(item, "Unexpected error. ErrorResult is null");
-			}
+					queue.Abort(item, ErrorType.Unhandled, new Error("Unexpected error. ErrorResult is null"));
+			};
 		}
 		public static Task AddAsync(this List<Task> sequence, Task item)
 		{

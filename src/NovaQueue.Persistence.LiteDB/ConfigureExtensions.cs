@@ -1,21 +1,22 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using NovaQueue.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using NovaQueue.Persistence.LiteDB.Repositories;
 
 namespace NovaQueue.Persistence.LiteDB
 {
 	public static class ConfigureExtensions
 	{
-		public static IServiceCollection UseLiteDB(this IServiceCollection services, string connectionString)
+		public static IServiceCollection AddLiteDbPersistence<TPayload>(this IServiceCollection services, string connectionString)
+			where TPayload : class
 		{
-
-			services.AddSingleton<IQueueRepository, LiteDBRepository>((provider) =>
+			services.AddOptions<PersistenceOptions>().Configure(opt =>
 			{
-				return new LiteDBRepository(connectionString);
+				opt.ConnectionString = connectionString;
 			});
+			services.AddSingleton<IDatabaseContext<TPayload>, LiteDBContext<TPayload>>();
+			services.AddSingleton<IQueueRepository<TPayload>, LiteDbQueueRepository<TPayload>>();
+			services.AddSingleton<IDeadLetterRepository<TPayload>, LiteDbDeadLetterRepository<TPayload>>();
+			services.AddSingleton<ICompletedRepository<TPayload>, LiteDbCompletedRepository<TPayload>>();
 			return services;
 		}
 

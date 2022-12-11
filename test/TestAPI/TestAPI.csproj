@@ -8,13 +8,15 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation" Version="11.4.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\NovaQueue.Abstractions\NovaQueue.Abstractions.csproj" />
-    <ProjectReference Include="..\src\NovaQueue.Persistence.LiteDB\NovaQueue.Persistence.LiteDB.csproj" />
-    <ProjectReference Include="..\src\NovaQueue.Worker\NovaQueue.Worker.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Abstractions\NovaQueue.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Endpoints\NovaQueue.Endpoints.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Persistence.LiteDB\NovaQueue.Persistence.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Worker\NovaQueue.Worker.csproj" />
   </ItemGroup>
 
 </Project>

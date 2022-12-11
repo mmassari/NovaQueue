@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NovaQueue.Abstractions;
 
 namespace NovaQueue.Worker
 {
@@ -7,5 +8,6 @@ namespace NovaQueue.Worker
 	{
 		void Enqueue(TPayload payload);
 		Task EnqueueAsync(TPayload payload);
+		Task RunAsync(QueueEntry<TPayload> entry);
 	}
 }

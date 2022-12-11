@@ -12,11 +12,11 @@ namespace NovaQueueTests
 {
 	public class NovaQueueTest_Transactional : IDisposable
 	{
-		LiteDBRepository _repository;
+		LiteDBQueueRepository _repository;
 		const string _collectionName = "transactionaltestcollection";
 
 		NQueue<T> CreateQueue<T>() =>
-			new NQueue<T>(_repository, _collectionName, new NovaQueueOptions());
+			new NQueue<T>(_repository, _collectionName, new QueueOptions());
 
 		public NovaQueueTest_Transactional()
 		{

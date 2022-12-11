@@ -13,14 +13,9 @@ namespace NovaQueue.Worker
 			where TJob : class, IQueueJob<TPayload>
 		{
 			//Leggo le configurazioni della coda dalle settings e creo l'oggetto
-			services.Configure<NovaQueueOptions<TPayload>>(configuration);
+			services.Configure<QueueOptions<TPayload>>(configuration);
 			//Leggo le configurazioni della coda dalle settings e creo l'oggetto
-			services.AddSingleton<ITransactionalQueue<TPayload>>((provider)=>
-			{
-				var repo = provider.GetService<IQueueRepository>();
-				var options = provider.GetService<IOptions<NovaQueueOptions<TPayload>>>();
-				return new NQueue<TPayload>(repo, options);
-			});
+			services.AddSingleton<ITransactionalQueue<TPayload>, NQueue<TPayload>>();
 			//Inietto il worker specifico
 			services.AddTransient<IQueueJob<TPayload>, TJob>();
 			//Creo il BackgroundWorker per l'elaborazione della coda
@@ -34,14 +29,9 @@ namespace NovaQueue.Worker
 			where TJob : class, IQueueJobAsync<TPayload>
 		{
 			//Leggo le configurazioni della coda dalle settings e creo l'oggetto
-			services.Configure<NovaQueueOptions<TPayload>>(configuration);
+			services.Configure<QueueOptions<TPayload>>(configuration);
 			//Leggo le configurazioni della coda dalle settings e creo l'oggetto
-			services.AddSingleton<ITransactionalQueue<TPayload>>((provider) =>
-			{
-				var repo = provider.GetService<IQueueRepository>();
-				var options = provider.GetService<IOptions<NovaQueueOptions<TPayload>>>();
-				return new NQueue<TPayload>(repo, options);
-			});
+			services.AddSingleton<ITransactionalQueue<TPayload>, NQueue<TPayload>>();
 			//Inietto il worker specifico
 			services.AddTransient<IQueueJobAsync<TPayload>, TJob>();
 			//Creo il BackgroundWorker per l'elaborazione della coda

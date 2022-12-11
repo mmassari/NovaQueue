@@ -1,11 +1,13 @@
 ﻿using NovaQueue.Abstractions.Models;
+using System;
 using System.Threading.Tasks;
 
 namespace NovaQueue.Abstractions
 {
 	public interface IQueueJobAsync<T>
 	{
-		Task<Result<QueueEntryLog>> RunWorkerAsync(T payload);
+		event JobLogEventHandler<T> LogMessageReceived;
+		Task<Result> RunWorkerAsync(QueueEntry<T> payload);
 	}
 
 }

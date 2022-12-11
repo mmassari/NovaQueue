@@ -14,7 +14,7 @@ namespace SampleConsole
 	{
 		static void Main(string[] args)
 		{
-			var options = new NovaQueueOptions<string>()
+			var options = new QueueOptions<string>()
 			{
 				Name="logs",
 				MaxAttempts = 5,

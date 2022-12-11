@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -8,8 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\NovaQueue.Persistence.LiteDB\NovaQueue.Persistence.LiteDB.csproj" />
-    <ProjectReference Include="..\src\NovaQueue.Worker\NovaQueue.Worker.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Endpoints\NovaQueue.Endpoints.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Persistence.LiteDB\NovaQueue.Persistence.LiteDB.csproj" />
+    <ProjectReference Include="..\..\src\NovaQueue.Worker\NovaQueue.Worker.csproj" />
   </ItemGroup>
 
 </Project>

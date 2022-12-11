@@ -17,15 +17,16 @@
 
 	<ItemGroup>
 	  <Compile Remove="NovaQueueConfigure.cs" />
+	  <Compile Remove="Services\NQueueSimple.cs" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <None Include="NovaQueueConfigure.cs" />
+	  <None Include="Services\NQueueSimple.cs" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="FluentEmail.Core" Version="3.0.2" />
-		<PackageReference Include="FluentEmail.Liquid" Version="3.0.2" />
 		<PackageReference Include="Mapster" Version="7.3.0" />
 		<PackageReference Include="Quartz" Version="3.5.0" />
 	</ItemGroup>

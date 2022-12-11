@@ -7,8 +7,8 @@ namespace NovaQueue.Abstractions
 {
 	public static class Extensions
 	{
-		public static IOptions<NovaQueueOptions<T>> ToIOptions<T>(this NovaQueueOptions<T> options) =>
-			new NovaOptions<NovaQueueOptions<T>>(options);
+		public static IOptions<QueueOptions<T>> ToIOptions<T>(this QueueOptions<T> options) =>
+			new NovaOptions<QueueOptions<T>>(options);
 		
 	}
 }

@@ -32,11 +32,11 @@ namespace NovaQueueTests
 		/// </summary>
 		HashSet<int> _consumedRecords = new HashSet<int>();
 
-		LiteDBRepository _repository;
+		LiteDBQueueRepository _repository;
 		const string _collectionName = "threadedtestcollection";
 
 		NQueue<T> CreateQueue<T>() =>
-			new NQueue<T>(_repository, _collectionName, new NovaQueueOptions());
+			new NQueue<T>(_repository, _collectionName, new QueueOptions());
 
 		NQueue<int> _queue;
 		public NovaQueueTest_Threaded()
