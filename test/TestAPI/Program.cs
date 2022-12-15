@@ -1,5 +1,5 @@
 using NovaQueue.Worker;
-using NovaQueue.Persistence.LiteDB;
+using NovaQueue.Persistence.EFCore.SqlServer;
 using TestApi;
 using NovaQueue.Abstractions;
 using Microsoft.Extensions.Options;
@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddLiteDbPersistence<DelayPayload>(builder.Configuration.GetConnectionString("Default"));
 builder.Services.AddNovaQueueWorker<DelayPayload, DelayJob>(builder.Configuration.GetSection("NovaQueue:DelayWorker"));
+builder.Services.AddSqlServerPersistence<DelayPayload>(builder.Configuration.GetConnectionString("Default"));
 builder.Services.AddNovaQueueEndpoints<DelayPayload>(options =>
 {
 	options.SectionName = "NovaQueue:DelayWorker";

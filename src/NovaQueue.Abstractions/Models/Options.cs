@@ -6,7 +6,7 @@ using System.Text;
 namespace NovaQueue.Abstractions
 {
 	public class NovaOptions<T> : IOptions<T> 
-		where T : class
+		where T : class, new()
 	{
 		private readonly T options;
 

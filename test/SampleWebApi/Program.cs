@@ -1,35 +1,18 @@
-using NovaQueue.Worker;
-using SampleWebApi;
-using NovaQueue.Persistence.LiteDB;
-using NovaQueue.Endpoints;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using WebApplication31;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-builder.Services.AddLiteDbPersistence<DelayPayload>(builder.Configuration.GetConnectionString("Default"));
-builder.Services.AddNovaQueueWorkerAsync<DelayPayload, DelayJob>(
-	builder.Configuration.GetSection("NovaQueue:DelayWorker"));
-builder.Services.AddNovaQueueEndpoints<DelayPayload>(options =>
+public class Program
 {
-	options.SectionName = "NovaQueue:DelayWorker";
-	options.ReloadAfterWrite = true;
-});
-//	builder.Configuration.GetSection("NovaQueue:MailWorker"));
+	public static void Main(string[] args)
+	{
+		CreateHostBuilder(args).Build().Run();
+	}
 
-builder.Services.AddHostedService(provider => provider.GetService<IQueueWorker<DelayPayload>>()!);
-//builder.Services.AddHostedService(provider => provider.GetService<IQueueWorker<MailPayload>>());
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-app.MapGet("/", () => Results.Ok);
-//app.MapPost("/queue", async (
-//	[FromServices]IQueueWorker<DelayPayload> worker,
-//	[FromBody]DelayPayload payload) =>
-//{
-//	await worker.EnqueueAsync(payload);
-//	return Results.Ok();
-//}).WithName("Enqueue Payload");
-
-app.Run();
+	public static IHostBuilder CreateHostBuilder(string[] args) =>
+		 Host.CreateDefaultBuilder(args)
+			  .ConfigureWebHostDefaults(webBuilder =>
+			  {
+				  webBuilder.UseStartup<Startup>();
+			  });
+}

@@ -1,13 +1,21 @@
 ﻿using NovaQueue.Abstractions;
 using NovaQueue.Abstractions.Models;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 
 namespace SampleWebApi;
-public record MailPayload(string subject, string from, string to, string body);
+public class MailPayload
+{
+	public string subject { get; set; }
+	public string from { get; set; }
+	public string to { get; set; }
+	public string body { get; set; }
+}
 
 public class MailerJob2 : QueueJobBase<MailPayload>
 {
-	protected override (bool Result, ValidationError[] Errors) Validate(MailPayload payload)
+	protected override IEnumerable<ValidationError> Validate(MailPayload payload)
 	{
 		var errors = new List<ValidationError>();
 		if (string.IsNullOrWhiteSpace(payload.from))
@@ -16,9 +24,9 @@ public class MailerJob2 : QueueJobBase<MailPayload>
 			errors.Add(new ValidationError(nameof(payload.to), "Field is mandatory!"));
 
 		if (errors.Count == 0)
-			return (true, null!);
+			return null;
 
-		return (false, errors.ToArray());
+		return errors.ToArray();
 	}
 	protected override void JobExecute(MailPayload payload)
 	{
@@ -30,9 +38,9 @@ public class MailerJob2 : QueueJobBase<MailPayload>
 
 public class MailerJob : IQueueJobAsync<MailPayload>
 {
-	public event EventHandler<string> MessageReceived;
+	public event JobLogEventHandler<MailPayload> LogMessageReceived;
 
-	public async Task<(bool Result, ValidationError[] Errors)> ValidateAsync(MailPayload payload) =>
+	public async Task<ValidationError[]> ValidateAsync(MailPayload payload) =>
 		await Task.Run(() =>
 		{
 			var errors = new List<ValidationError>();
@@ -42,18 +50,18 @@ public class MailerJob : IQueueJobAsync<MailPayload>
 				errors.Add(new ValidationError(nameof(payload.to), "Field is mandatory!"));
 
 			if (errors.Count == 0)
-				return (true, null!);
+				return null;
 
-			return (false, errors.ToArray());
+			return errors.ToArray();
 		});
 
 	public async Task<Result> RunWorkerAsync(QueueEntry<MailPayload> entry)
 	{
-		var validation = await ValidateAsync(entry.Payload);
-		if (!validation.Result)
-			return new ValidationErrorResult("Validation Errors", validation.Errors);
+		var errors = await ValidateAsync(entry.Payload);
+		if (errors != null)
+			return new ValidationErrorResult("Validation Errors", errors);
 
-		MessageReceived?.Invoke(entry,$"MailerJob, I'm sending an email to {entry.Payload.to} with subject {entry.Payload.subject}");
+		LogMessageReceived?.Invoke(entry,$"MailerJob, I'm sending an email to {entry.Payload.to} with subject {entry.Payload.subject}");
 
 		await Task.Delay(3000);
 

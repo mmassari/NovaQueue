@@ -2,6 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NovaQueue.Abstractions;
 using NovaQueue.Abstractions.Models;
+using System;
+using System.Threading.Tasks;
 
 namespace NovaQueue.Worker
 {

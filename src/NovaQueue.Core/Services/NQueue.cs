@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Mapster;
-using System.Diagnostics;
 using NovaQueue.Abstractions;
 using Microsoft.Extensions.Options;
 using Quartz.Impl;
@@ -19,6 +18,7 @@ namespace NovaQueue.Core
 	/// on large server side applications due to performance limitations of LiteDB.
 	/// </summary>
 	public class NQueue<TPayload> : ITransactionalQueue<TPayload>
+		where TPayload : class
 	{
 		public QueueOptions<TPayload> Options { get; private set; }
 		readonly object _dequeueLock = new object();
@@ -26,6 +26,7 @@ namespace NovaQueue.Core
 		private readonly IQueueRepository<TPayload> queueRepo;
 		private readonly IDeadLetterRepository<TPayload> deadLetterRepo;
 		private readonly ICompletedRepository<TPayload> completedRepo;
+		private readonly IUnitOfWork<TPayload> unitOfWork;
 		public bool IsDeadLetterEnabled => Options.Completed.IsEnabled;
 
 		#region Constructors
@@ -41,14 +42,15 @@ namespace NovaQueue.Core
 			IQueueRepository<TPayload> queueRepository,
 			IDeadLetterRepository<TPayload> deadLetterRepository,
 			ICompletedRepository<TPayload> completedRepository,
-			IOptions<QueueOptions<TPayload>> options)
+			IOptions<QueueOptions<TPayload>> options,
+			IUnitOfWork<TPayload> unitOfWork)
 		{
 			dbContext = context;
 			queueRepo = queueRepository;
 			deadLetterRepo = deadLetterRepository;
 			completedRepo = completedRepository;
 			Options = options.Value;
-
+			this.unitOfWork = unitOfWork;
 			//dbContext.Initialize(Options.Name);
 			if (Options.ResetOrphansOnStartup)
 				ResetOrphans();
@@ -59,6 +61,8 @@ namespace NovaQueue.Core
 				StdSchedulerFactory factory = new StdSchedulerFactory();
 				IScheduler sched = factory.GetScheduler().Result;
 			}
+
+
 		}
 
 		#endregion
@@ -167,31 +171,25 @@ namespace NovaQueue.Core
 				}
 				entry.Errors.Add(new AttemptErrors { Attempt = entry.Attempts, Type = errorType, Errors = errors });
 				entry.IsCheckedOut = false;
-				entry.Attempts++;
+//				entry.Attempts++;
 				entry.LastAttempt = DateTime.UtcNow;
 
-				dbContext.BeginTransaction();
 
 				if (IsMaxAttemptsReached(entry) || errorType==ErrorType.Validation)
 				{
 					if (IsDeadLetterEnabled)
-					{
-						deadLetterRepo.Insert(new DeadLetterEntry<TPayload>(entry));
-					}
-					queueRepo.Delete(entry.Id);
+						unitOfWork.MoveToDeadLetter(entry);
+					else
+						queueRepo.Delete(entry.Id);
 				}
 				else
 				{
-					if (Options.OnFailure == OnFailurePolicy.Retry)
-					{
-						queueRepo.Update(entry);
-					}
-					else
-					{
-						queueRepo.MoveToEnd(entry);
-					}
+					
+					if (Options.OnFailure != OnFailurePolicy.Retry)
+						entry.Sort = queueRepo.GetMaxSortId() + 1;
+
+					queueRepo.Update(entry);
 				}
-				dbContext.CommitTransaction();
 			}
 		}
 
@@ -229,10 +227,9 @@ namespace NovaQueue.Core
 				}
 
 				if (Options.Completed.IsEnabled)
-				{
-					completedRepo.Insert(new CompletedEntry<TPayload>(item));
-				}
-				queueRepo.Delete(item.Id);
+					unitOfWork.MoveToCompleted(item);
+				else
+					queueRepo.Delete(item.Id);
 			}
 		}
 

@@ -1,20 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="IOptionsWriter" Version="4.7.0.1" />
-  </ItemGroup>
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<Authors>Michele Massari</Authors>
+		<Company>Titantex spa</Company>
+		<Description>Publish endpoints to manage a NovaQueue Hosted Service. Only for .NET 6 or 7</Description>
+		<Copyright>2022 by Titantex spa</Copyright>
+		<PackageProjectUrl>https://github.com/mmassari/NovaQueue</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mmassari/NovaQueue</RepositoryUrl>
+		<RepositoryType>Git</RepositoryType>
+		<PackageTags>LiteDB, MSMQ, Queue</PackageTags>
+		<PackageLicenseUrl>https://github.com/mmassari/NovaQueue/blob/main/LICENSE</PackageLicenseUrl>
+		<Version>1.0</Version>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>NovaQueue.Endpoints</Title>
+	</PropertyGroup>
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="IOptionsWriter" Version="4.7.0.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\NovaQueue.Abstractions\NovaQueue.Abstractions.csproj" />
-    <ProjectReference Include="..\NovaQueue.Worker\NovaQueue.Worker.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\NovaQueue.Abstractions\NovaQueue.Abstractions.csproj" />
+		<ProjectReference Include="..\NovaQueue.Worker\NovaQueue.Worker.csproj" />
+	</ItemGroup>
 
 </Project>

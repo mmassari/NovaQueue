@@ -58,7 +58,7 @@ namespace NovaQueue.Endpoints
 			await queue.MoveUpAsync(entry);
 			return Results.Ok();
 		}
-		internal async Task<IResult> Run(string id, ITransactionalQueue<TPayload> queue, IQueueWorkerAsync<TPayload> worker)
+		internal async Task<IResult> Run(string id, ITransactionalQueue<TPayload> queue, IQueueWorker<TPayload> worker)
 		{
 			var entry = await queue.DequeueAsync();
 			await worker.RunAsync(entry);

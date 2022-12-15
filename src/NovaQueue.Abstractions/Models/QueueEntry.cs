@@ -23,10 +23,15 @@ namespace NovaQueue.Abstractions
 		public ErrorType Type { get; set; }
 		public Error[] Errors { get; set; }
 	}
-	public class QueueEntry<T>
+	public interface IEntity<TPayload>
+	{
+		string Id { get; set; }
+		TPayload Payload { get; set; }
+	}
+	public class QueueEntry<T> : IEntity<T>
 	{
 		public string Id { get; set; } = Guid.NewGuid().ToString();
-		public int Sort { get; set; }
+		public int Sort { get; set; } = 0;
 		public T Payload { get; set; }
 		public bool IsCheckedOut { get; set; } = false;
 		public DateTime DateCreated { get; } = DateTime.Now;

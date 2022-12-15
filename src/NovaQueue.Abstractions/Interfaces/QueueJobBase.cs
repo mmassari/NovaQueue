@@ -1,5 +1,7 @@
 ﻿using NovaQueue.Abstractions.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NovaQueue.Abstractions
 {
@@ -12,9 +14,9 @@ namespace NovaQueue.Abstractions
 		public virtual Result RunWorker(QueueEntry<T> entry)
 		{
 			this.entry = entry;
-			var validation = Validate(entry.Payload);
-			if (!validation.Result)
-				return new ValidationErrorResult("Validation Errors", validation.Errors);
+			var errors = Validate(entry.Payload);
+			if (errors != null)
+				return new ValidationErrorResult("Validation Errors", errors.ToArray());
 
 			try
 			{
@@ -23,19 +25,17 @@ namespace NovaQueue.Abstractions
 			}
 			catch (Exception ex)
 			{
-				return new ErrorResult(
-					"An error has been thrown",
-					new Error(ex.Message));
+				return new ErrorResult("An error occurred while executing job", new Error(ex));
 			}
 		}
-		protected void LogEvent(string message)
+		protected virtual void LogEvent(string message)
 		{
 			Console.WriteLine(message);
 			LogMessageReceived?.Invoke(entry, message);
 		}
-		protected virtual (bool Result, ValidationError[] Errors) Validate(T payload)
+		protected virtual IEnumerable<ValidationError> Validate(T payload)
 		{
-			return (true, null!);
+			return null;
 		}
 	}
 

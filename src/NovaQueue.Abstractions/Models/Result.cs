@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -85,19 +86,24 @@ namespace NovaQueue.Abstractions.Models
 
 	public class Error
 	{
-		public Error(string details) : this(null, details)
+		public Error(string message) : this(message,null)
 		{
 
 		}
-
-		public Error(string code, string details)
+		[JsonConstructor]
+		public Error(string message, Exception exception)
 		{
-			Code = code;
-			Details = details;
+			Message = message;
+			Exception = exception;
+		}
+		public Error(Exception exception)
+		{
+			Message = exception.Message;
+			Exception = exception;
 		}
 
-		public string Code { get; }
-		public string Details { get; }
+		public Exception Exception { get; }
+		public string Message { get; }
 	}
 
 	internal interface IErrorResult
@@ -130,13 +136,13 @@ namespace NovaQueue.Abstractions.Models
 	}
 	public class ValidationError : Error
 	{
-		public ValidationError(string propertyName, string details) : base(null, details)
+		public ValidationError(string propertyName, string message) : base(message)
 		{
 			PropertyName = propertyName;
 		}
 		public override string ToString()
 		{
-			return $"{PropertyName}={Details}";
+			return $"{PropertyName}={Message}";
 		}
 		public string PropertyName { get; }
 	}

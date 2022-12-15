@@ -8,14 +8,14 @@ public record DelayPayload(string title, DateTime dt, int counter);
 
 public class DelayJob : QueueJobBase<DelayPayload>
 {
-	protected override (bool Result, ValidationError[] Errors) Validate(DelayPayload payload)
+	protected override ValidationError[] Validate(DelayPayload payload)
 	{
 		ValidationResult result = new DelayPayloadValidator().Validate(payload);
 		if (result.IsValid)
-			return (true, null!);
+			return null!;
 		var err = result.Errors.Select(c => new ValidationError(c.PropertyName, c.ErrorMessage));
 		LogEvent("VALIDATION ERROR!! " + string.Join(" - ", err));
-		return (false, err.ToArray());
+		return err.ToArray();
 	}
 	protected override void JobExecute(DelayPayload payload)
 	{
@@ -24,7 +24,6 @@ public class DelayJob : QueueJobBase<DelayPayload>
 		if (payload.counter % 10 == 0)
 		{
 			var err = "Errore durante la divisione per 10";
-			LogEvent("ERROR!! " + err);
 			throw new InvalidOperationException(err);
 		}
 	}
@@ -37,8 +36,8 @@ public class DelayJob : QueueJobBase<DelayPayload>
 				.WithMessage("The title can't be empty");
 			RuleFor(c => c.dt)
 				.NotEmpty()
-				.GreaterThan(new DateTime(2022, 1, 1))
-				.WithMessage("The date must be greater than 01/01/2022");
+				.GreaterThan(new DateTime(2021, 1, 1))
+				.WithMessage("The date must be greater than 01/01/2021");
 			RuleFor(c => c.counter)
 				.GreaterThan(0)
 				.WithMessage("The counter must be greater than 0");

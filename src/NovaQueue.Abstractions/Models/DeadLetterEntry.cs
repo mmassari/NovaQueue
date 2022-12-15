@@ -4,14 +4,15 @@ using System.Collections.Generic;
 
 namespace NovaQueue.Abstractions;
 
-public class DeadLetterEntry<T>
+public class DeadLetterEntry<T> : IEntity<T>
 {
-	public string Id { get; }
-	public T Payload { get; }
+	public string Id { get; set; }
+	public T Payload { get; set; }
 	public List<AttemptLogs> Logs { get; set; }
-	public List<AttemptErrors> Errors { get; }
-	public DateTime DateCreated { get; }
-	public DateTime DateDeadLettered { get; } = DateTime.Now;
+	public List<AttemptErrors> Errors { get; set; }
+	public DateTime DateCreated { get; set; }
+	public DateTime DateDeadLettered { get; set; } = DateTime.Now;
+	public DeadLetterEntry() { }
 	public DeadLetterEntry(QueueEntry<T> queueEntry)
 	{
 		Id = queueEntry.Id;

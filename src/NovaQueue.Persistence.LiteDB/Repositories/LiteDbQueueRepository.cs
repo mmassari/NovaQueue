@@ -1,11 +1,9 @@
 ﻿using LiteDB;
-using NovaQueue.Abstractions;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
+using NovaQueue.Abstractions;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace NovaQueue.Persistence.LiteDB
 {
@@ -31,26 +29,49 @@ namespace NovaQueue.Persistence.LiteDB
 			=> collection.Find(c => c.IsCheckedOut == false).OrderBy(c => c.Sort);
 		public void Insert(QueueEntry<TPayload> entry)
 		{
-			context.BeginTransaction();
-			var maxSort = 0;
-			if (collection.Count() > 0)
-				maxSort = collection.Max(c => c.Sort);
-			entry.Sort = maxSort + 1;
-			collection.Insert(entry);
-			context.CommitTransaction();
+			lock (dequeueLock)
+			{
+				try
+				{
+					context.BeginTransaction();
+					var maxSort = 0;
+					if (collection.Count() > 0)
+						maxSort = collection.Max(c => c.Sort);
+					entry.Sort = maxSort + 1;
+					collection.Insert(entry);
+
+					context.CommitTransaction();
+				}
+				catch (Exception)
+				{
+					context.RollbackTransaction();
+					throw;
+				}
+			}
 		}
 
 		public void InsertBulk(IEnumerable<QueueEntry<TPayload>> entries)
 		{
-			context.BeginTransaction();
-			var maxSort = collection.Max(c => c.Sort);
-			foreach (var entry in entries)
+			lock (dequeueLock)
 			{
-				maxSort++;
-				entry.Sort = maxSort;
-				collection.Insert(entry);
+				try
+				{
+					context.BeginTransaction();
+					var maxSort = collection.Max(c => c.Sort);
+					foreach (var entry in entries)
+					{
+						maxSort++;
+						entry.Sort = maxSort;
+						collection.Insert(entry);
+					}
+					context.CommitTransaction();
+				}
+				catch (Exception)
+				{
+					context.RollbackTransaction();
+					throw;
+				}
 			}
-			context.CommitTransaction();
 		}
 		public void Update(QueueEntry<TPayload> entry)
 			=> collection.Update(entry);
@@ -64,25 +85,32 @@ namespace NovaQueue.Persistence.LiteDB
 		{
 			lock (dequeueLock)
 			{
-				context.Database.BeginTrans();
 				var result = GetNotCheckedOutEntries().Take(maxEntries).ToList();
 				if (result is null || result.Count() == 0)
 					return new List<QueueEntry<TPayload>>();
 
-				foreach (var item in result)
+				try
 				{
-					item.IsCheckedOut = true;
-					Update(item);
+					context.BeginTransaction();
+					foreach (var item in result)
+					{
+						item.IsCheckedOut = true;
+						Update(item);
+					}
+					context.CommitTransaction();
+					return result;
 				}
-				context.Database.Commit();
-				return result;
+				catch (Exception)
+				{
+					context.RollbackTransaction();
+					throw;
+				}			
 			}
 		}
 		public bool MoveUp(QueueEntry<TPayload> entry)
 		{
 			lock (dequeueLock)
 			{
-				context.Database.BeginTrans();
 				var entries = collection
 					.Find(c => c.Sort < entry.Sort)
 					.OrderByDescending(c => c.Sort);
@@ -90,16 +118,27 @@ namespace NovaQueue.Persistence.LiteDB
 				if (entries == null || entries.Count() == 0)
 					return false;
 
-				var entryLow = entries.First();
-				var sortLow = entryLow.Sort;
-				entryLow.Sort = entry.Sort;
-				entry.Sort = sortLow;
+				try
+				{
+					context.BeginTransaction();
 
-				Update(entry);
-				Update(entryLow);
+					var entryLow = entries.First();
+					var sortLow = entryLow.Sort;
+					entryLow.Sort = entry.Sort;
+					entry.Sort = sortLow;
 
-				context.Database.Commit();
-				return true;
+					Update(entry);
+					Update(entryLow);
+
+					context.CommitTransaction();
+					return true;
+
+				}
+				catch (Exception)
+				{
+					context.RollbackTransaction();
+					throw;
+				}			
 			}
 		}
 
@@ -107,19 +146,27 @@ namespace NovaQueue.Persistence.LiteDB
 		{
 			lock (dequeueLock)
 			{
-				context.Database.BeginTrans();
 				var maxSort = collection.Max<int>(c => c.Sort);
 				if (maxSort == 0 || maxSort == entry.Sort)
 					return false;
 
-				entry.Sort = maxSort + 1;
-				Update(entry);
-				context.Database.Commit();
-				return true;
+				try
+				{
+					context.BeginTransaction();
+					entry.Sort = maxSort + 1;
+					Update(entry);
+					context.CommitTransaction();
+					return true;
+
+				}
+				catch (Exception)
+				{
+					context.RollbackTransaction();
+					throw;
+				}			
 			}
 		}
 		#endregion
-
 
 		#region Async Methods
 		public Task<QueueEntry<TPayload>> GetAsync(string id)

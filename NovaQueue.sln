@@ -31,9 +31,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Domain", "Domain", "{DE49A8
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{0E922A78-2667-4659-A54D-A1CE8BAAB8D3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaQueue.Communication.Email", "src\NovaQueue.Communication.Email\NovaQueue.Communication.Email.csproj", "{0FC5C538-76FF-4B56-B118-414C7E792423}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovaQueue.Communication.Email", "src\NovaQueue.Communication.Email\NovaQueue.Communication.Email.csproj", "{0FC5C538-76FF-4B56-B118-414C7E792423}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaQueue.Endpoints", "src\NovaQueue.Endpoints\NovaQueue.Endpoints.csproj", "{395F1940-179A-49CD-915F-B53424112D00}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NovaQueue.Endpoints", "src\NovaQueue.Endpoints\NovaQueue.Endpoints.csproj", "{395F1940-179A-49CD-915F-B53424112D00}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NovaQueue.Persistence.EFCore.SqlServer", "src\NovaQueue.Persistence.EFCore.SqlServer\NovaQueue.Persistence.EFCore.SqlServer.csproj", "{27B71648-3E30-41C4-AD33-B217537FE910}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -81,6 +83,10 @@ Global
 		{395F1940-179A-49CD-915F-B53424112D00}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{395F1940-179A-49CD-915F-B53424112D00}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{395F1940-179A-49CD-915F-B53424112D00}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27B71648-3E30-41C4-AD33-B217537FE910}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27B71648-3E30-41C4-AD33-B217537FE910}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27B71648-3E30-41C4-AD33-B217537FE910}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27B71648-3E30-41C4-AD33-B217537FE910}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -100,6 +106,7 @@ Global
 		{0E922A78-2667-4659-A54D-A1CE8BAAB8D3} = {B93302EA-F76A-47E6-B1C2-3B7F905A7766}
 		{0FC5C538-76FF-4B56-B118-414C7E792423} = {0E922A78-2667-4659-A54D-A1CE8BAAB8D3}
 		{395F1940-179A-49CD-915F-B53424112D00} = {CC41F53F-9656-4CBA-B237-8FEC65FA48CB}
+		{27B71648-3E30-41C4-AD33-B217537FE910} = {0E922A78-2667-4659-A54D-A1CE8BAAB8D3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E281CD4B-A9E5-4494-B549-FE5B42426F78}

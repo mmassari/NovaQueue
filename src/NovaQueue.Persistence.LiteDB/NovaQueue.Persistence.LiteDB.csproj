@@ -1,26 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-	  <LangVersion>10</LangVersion>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>netstandard2.0</TargetFramework>
+		<LangVersion>10</LangVersion>
+		<Authors>Michele Massari</Authors>
+		<Company>Titantex spa</Company>
+		<Description>Persistence adapter for NovaQueue using LiteDB as database.</Description>
+		<Copyright>2022 by Titantex spa</Copyright>
+		<PackageProjectUrl>https://github.com/mmassari/NovaQueue</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/mmassari/NovaQueue</RepositoryUrl>
+		<RepositoryType>Git</RepositoryType>
+		<PackageTags>LiteDB, MSMQ, Queue</PackageTags>
+		<PackageLicenseUrl>https://github.com/mmassari/NovaQueue/blob/main/LICENSE</PackageLicenseUrl>
+		<Version>1.0</Version>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Title>NovaQueue.Persistence.LiteDB</Title>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="LiteDBRepository.cs" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="LiteDBRepository.cs" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Include="LiteDBRepository.cs" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="LiteDBRepository.cs" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="LiteDB" Version="5.0.12" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="LiteDB" Version="5.0.12" />
+		<PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="3.1.31" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="3.1.31" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\NovaQueue.Abstractions\NovaQueue.Abstractions.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+	  <ProjectReference Include="..\NovaQueue.Abstractions\NovaQueue.Abstractions.csproj" />
+	</ItemGroup>
 
 </Project>

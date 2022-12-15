@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd">
   <metadata>
-    <id>NovaQueue</id>
-	 <title>NovaQueue</title>
+    <id>mmassari/NovaQueue.Core</id>
+	<title>NovaQueue.Core</title>
     <Version>0.0.1</Version>
     <authors>Michele Massari</authors>
     <owners>Michele Massari</owners>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <licenseUrl>https://github.com/NomadeonSoftwareLLC/LiteQueue/blob/master/LICENSE</licenseUrl>
-    <projectUrl>http://nomadeon.com/2018/06/07/litequeue/ </projectUrl>
-    <description>Lightweight, persisted, thread safe, (optionally) transactional, FIFO queue built on LiteDB.</description>
-	<summary>Lightweight, persisted, thread safe, (optionally) transactional, FIFO queue built on LiteDB.</summary>
+    <licenseUrl></licenseUrl>
+    <projectUrl>https://github.com/mmassari/NovaQueue</projectUrl>
+    <description>Lightweight, persisted, thread safe, transactional, FIFO in-process task queue with built-in dead letter queue support.</description>
+	<summary>Lightweight, persisted, thread safe, transactional, FIFO in-process task queue with built-in dead letter queue support.</summary>
     <copyright>2022 by Michele Massari</copyright>
     <tags>LiteDB, MSMQ, Queue</tags>
 	<releaseNotes>Added DeadLetterQueue support</releaseNotes> 
-    <repository type="Git" url="https://github.com/NomadeonSoftwareLLC/LiteQueue" />
+    <repository type="Git" url="https://github.com/mmassari/NovaQueue" />
     <dependencies>
       <group targetFramework=".NETStandard2.0">
         <dependency id="LiteDB" version="5.0.8" exclude="Build,Analyzers" />

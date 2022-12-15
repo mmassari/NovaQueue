@@ -26,7 +26,7 @@ namespace NovaQueue.Worker
 				if (result is ValidationErrorResult validationResult)
 					queue.Abort(item, ErrorType.Validation, validationResult.Errors.ToArray());
 				else if (result is ErrorResult errorResult)
-					queue.Abort(item, ErrorType.JobExecution, new Error(errorResult.Message));
+					queue.Abort(item, ErrorType.JobExecution, errorResult.Errors.Select(c=>c).ToArray());
 				else
 					queue.Abort(item, ErrorType.Unhandled, new Error("Unexpected error. ErrorResult is null"));
 			};

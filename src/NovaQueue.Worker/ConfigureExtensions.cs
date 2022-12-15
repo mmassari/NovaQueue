@@ -35,7 +35,7 @@ namespace NovaQueue.Worker
 			//Inietto il worker specifico
 			services.AddTransient<IQueueJobAsync<TPayload>, TJob>();
 			//Creo il BackgroundWorker per l'elaborazione della coda
-			services.AddSingleton<IQueueWorker<TPayload>, NQueueWorker<TPayload>>();
+			services.AddSingleton<IQueueWorker<TPayload>, NQueueWorkerAsync<TPayload>>();
 			//Registro il servizio in background
 			services.AddHostedService(provider => provider.GetService<IQueueWorker<TPayload>>()!);
 			return services;

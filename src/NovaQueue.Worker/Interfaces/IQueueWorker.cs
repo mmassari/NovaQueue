@@ -1,4 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NovaQueue.Abstractions;
+using System;
+using System.Threading.Tasks;
 
 namespace NovaQueue.Worker
 {
@@ -14,5 +17,6 @@ namespace NovaQueue.Worker
 		Task<WorkerStatus> GetStatusAsync();
 		Task StopAsync();
 		Task StartAsync();
+		Task RunAsync(QueueEntry<TPayload> entry);
 	}
 }

@@ -1,5 +1,7 @@
 ﻿using NovaQueue.Abstractions.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace NovaQueue.Abstractions
@@ -12,9 +14,9 @@ namespace NovaQueue.Abstractions
 		public async virtual Task<Result> RunWorkerAsync(QueueEntry<T> entry)
 		{
 			this.entry = entry;
-			var validation = await ValidateAsync(entry.Payload);
-			if (!validation.Result)
-				return validation.ErrorResult ?? throw new NullReferenceException();
+			var errors = await ValidateAsync(entry.Payload);
+			if (errors != null && errors.Count > 0)
+				return new ValidationErrorResult("Validation Errors", errors.ToArray());
 
 			try
 			{
@@ -23,16 +25,17 @@ namespace NovaQueue.Abstractions
 			}
 			catch (Exception ex)
 			{
+				LogEvent("Exception has been thrown\n" + ex);
 				return new ErrorResult("An error has been thrown", new Error(ex.Message));
 			}
 		}
-		protected void LogEvent(string message)
+		protected virtual void LogEvent(string message)
 		{
 			LogMessageReceived?.Invoke(entry, message);
 		}
-		protected async virtual Task<(bool Result, ValidationErrorResult ErrorResult)> ValidateAsync(T payload)
+		protected virtual Task<List<ValidationError>> ValidateAsync(T payload)
 		{
-			return await Task.Run<(bool Result, ValidationErrorResult ErrorResult)>(() => { return (true, new ValidationErrorResult("OK")); });
+			return Task.FromResult(new List<ValidationError>());
 		}
 	}
 }

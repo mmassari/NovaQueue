@@ -3,18 +3,17 @@
 	<PropertyGroup>
 		<TargetFramework>netstandard2.0</TargetFramework>
 		<LangVersion>10</LangVersion>
-		<Authors>Michele Massari</Authors>
-		<Company>Titantex spa</Company>
-		<Description>Lightweight, persisted, thread safe, transactional, FIFO in-process task queue with built-in dead letter queue support.</Description>
-		<Copyright>2022 by Titantex spa</Copyright>
-		<PackageProjectUrl>https://github.com/mmassari/NovaQueue</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/mmassari/NovaQueue</RepositoryUrl>
+		<Authors>Nick Bushby</Authors>
+		<Company>Nomadeon Software LLC</Company>
+		<Description>Lightweight, persisted, thread safe, (optionally) transactional, FIFO queue built on LiteDB.</Description>
+		<Copyright>2018 by Nomadeon Software LLC</Copyright>
+		<PackageProjectUrl>http://nomadeon.com/2018/06/07/litequeue/</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/NomadeonSoftwareLLC/LiteQueue</RepositoryUrl>
 		<RepositoryType>Git</RepositoryType>
 		<PackageTags>LiteDB, MSMQ, Queue</PackageTags>
-		<PackageLicenseUrl>https://github.com/mmassari/NovaQueue/blob/main/LICENSE</PackageLicenseUrl>
-		<Version>1.0.2</Version>
+		<PackageLicenseUrl>https://github.com/NomadeonSoftwareLLC/LiteQueue/blob/master/LICENSE</PackageLicenseUrl>
+		<Version>1.1.1</Version>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Title>NovaQueue.Core</Title>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -33,7 +32,7 @@
 
 	<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
 	  <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions">
-	    <Version>3.1.31</Version>
+	    <Version>6.0.0</Version>
 	  </PackageReference>
 	  <PackageReference Include="Microsoft.Extensions.Options">
 	    <Version>6.0.0</Version>

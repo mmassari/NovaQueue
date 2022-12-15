@@ -1,6 +1,10 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NovaQueue.Abstractions;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace NovaQueue.Worker
 {
@@ -25,7 +29,11 @@ namespace NovaQueue.Worker
 			_tasks = new List<Task>();
 		}
 		protected abstract Task RunJob(QueueEntry<TPayload> item);
-		public void Enqueue(TPayload payload) => _queue.Enqueue(payload);
+		public void Enqueue(TPayload payload)
+		{
+			_queue.Enqueue(payload);
+			_logger.LogInformation("New job has been enqueued.");
+		}
 		public async Task EnqueueAsync(TPayload payload) => await Task.Run(() => _queue.Enqueue(payload));
 
 		public Task StartAsync(CancellationToken cancellationToken)
@@ -46,7 +54,7 @@ namespace NovaQueue.Worker
 						await Task.Delay(1000);
 						continue;
 					}
-
+					_logger.LogInformation("an entry has been dequeued from the queue");
 					//Avvio in thread paralleli tutti i job ed attendo
 					await items.ForEachAsync(item =>
 						_tasks.AddAsync(RunJob(item))
@@ -60,7 +68,7 @@ namespace NovaQueue.Worker
 				}
 				catch (Exception ex)
 				{
-					Console.WriteLine("Errore:" + ex.Message);
+					_logger.LogError(ex, "Error in worker's main loop");
 				}
 			}
 		}
@@ -103,6 +111,11 @@ namespace NovaQueue.Worker
 		}
 
 		public Task StartAsync()
+		{
+			throw new NotImplementedException();
+		}
+
+		public Task RunAsync(QueueEntry<TPayload> entry)
 		{
 			throw new NotImplementedException();
 		}

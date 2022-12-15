@@ -20,6 +20,7 @@ namespace NovaQueue.Abstractions
 		bool MoveUp(QueueEntry<TPayload> entry);
 		bool MoveToEnd(QueueEntry<TPayload> entry);
 		bool HaveEntries();
+		int GetMaxSortId();
 
 		//Async methods
 		Task<QueueEntry<TPayload>> GetAsync(string id);
@@ -36,5 +37,8 @@ namespace NovaQueue.Abstractions
 		Task DeleteAsync(string id);
 		Task ClearAsync();
 		Task<int> CountAsync();
+		Task<int> CountNotCheckedOutAsync();
+		Task<int> GetMaxSortIdAsync();
+
 	}
 }

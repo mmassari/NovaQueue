@@ -16,7 +16,7 @@ namespace NovaQueue.Endpoints
 		Admin
 	}
 
-	public static class EndpointExtensions
+	public static class EndpointsServiceConfigureExtensions
 	{		
 		public static IServiceCollection AddNovaQueueEndpoints<TPayload>(this IServiceCollection services, Action<SettingsOptions> options)
 			where TPayload: class
